@@ -1,0 +1,8 @@
+{
+  "name":"bestellungbh",
+  "version":"1.0.0",
+  "private":true,
+  "description":"BestellungBH restaurant inventory, supplier ordering and Gastronovi import web app",
+  "scripts":{"start":"node server.js"},
+  "engines":{"node":">=18"}
+}
