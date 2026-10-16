@@ -1,0 +1,20 @@
+name: BestellungBH regression checks
+on:
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'server.js'
+      - 'package.json'
+      - 'test/**'
+      - '.github/workflows/regression.yml'
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check server.js
+      - run: npm test
