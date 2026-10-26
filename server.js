@@ -3,6 +3,8 @@ const port=process.env.PORT||3000;
 const adminUser=process.env.ADMIN_USER||"", adminPass=process.env.ADMIN_PASSWORD||"";
 const staffUser=process.env.STAFF_USER||"", staffPass=process.env.STAFF_PASSWORD||"";
 const html=fs.readFileSync(path.join(__dirname,"index.html"),"utf8");
+const {handleInventory}=require("./inventory-api");
+const inventoryScript=fs.readFileSync(path.join(__dirname,"storage.js"),"utf8");
 const sessions=new Map();
 function setCookie(res,token){res.setHeader("Set-Cookie",`bh_session=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=604800`)}
 function clearCookie(res){res.setHeader("Set-Cookie","bh_session=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0")}
@@ -13,6 +15,8 @@ return `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="v
 function serveApp(res,role){const body=html.replace("</head>",`<script>window.__BH_ROLE=${JSON.stringify(role)};</script></head>`);res.writeHead(200,{"Content-Type":"text/html; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff","Referrer-Policy":"same-origin"});res.end(body)}
 function readBody(req){return new Promise((resolve,reject)=>{let b="";req.on("data",c=>{b+=c;if(b.length>10000)req.destroy()});req.on("end",()=>resolve(new URLSearchParams(b)));req.on("error",reject)})}
 const server=http.createServer(async(req,res)=>{try{
+if(req.url==="/api/storage"){await handleInventory(req,res,sessionRole(req));return}
+if(req.url==="/storage.js"&&req.method==="GET"){if(!sessionRole(req)){res.writeHead(401);res.end();return}res.writeHead(200,{"Content-Type":"application/javascript; charset=utf-8","Cache-Control":"no-store"});res.end(inventoryScript);return}
 if(req.url==="/health"){res.writeHead(200,{"Content-Type":"text/plain"});res.end("ok");return}
 if(req.url==="/logout"&&(req.method==="POST"||req.method==="GET")){const m=(req.headers.cookie||"").match(/(?:^|; )bh_session=([^;]+)/);if(m)sessions.delete(m[1]);clearCookie(res);res.writeHead(req.method==="GET"?303:204,req.method==="GET"?{Location:"/"}:undefined);res.end();return}
 if(req.url==="/login"&&req.method==="POST"){const f=await readBody(req),u=f.get("username")||"",p=f.get("password")||"";let role=null;if(adminUser&&adminPass&&u===adminUser&&p===adminPass)role="admin";else if(staffUser&&staffPass&&u===staffUser&&p===staffPass)role="staff";if(!role){res.writeHead(401,{"Content-Type":"text/html; charset=utf-8","Cache-Control":"no-store"});res.end(loginPage("Benutzername oder Passwort ist nicht korrekt."));return}const token=crypto.randomBytes(32).toString("hex");sessions.set(token,role);setCookie(res,token);res.writeHead(303,{Location:"/"});res.end();return}

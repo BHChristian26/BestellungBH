@@ -6,3 +6,14 @@ for(const [username,password,role] of [['test-admin','temporary-test','admin'],[
 assert.equal((await fetch(base+'/login',{method:'POST',body:new URLSearchParams({username:'bad',password:'bad'})})).status,401);
 }finally{child.kill()}
 });
+
+test('Storage API requires the existing login and rejects cross-origin writes',async()=>{
+const child=spawn(process.execPath,['server.js'],{env:{...process.env,PORT:'3188',STAFF_USER:'test-staff',STAFF_PASSWORD:'temporary-staff'},stdio:['ignore','pipe','pipe']});
+try{await new Promise((resolve,reject)=>{child.stdout.once('data',resolve);child.once('error',reject);child.once('exit',code=>reject(new Error('Server exited: '+code)))});const base='http://127.0.0.1:3188';
+assert.equal((await fetch(base+'/api/storage')).status,401);assert.equal((await fetch(base+'/storage.js')).status,401);
+const login=await fetch(base+'/login',{method:'POST',body:new URLSearchParams({username:'test-staff',password:'temporary-staff'}),redirect:'manual'});const cookie=login.headers.get('set-cookie').split(';')[0];
+assert.equal((await fetch(base+'/storage.js',{headers:{cookie}})).status,200);
+assert.equal((await fetch(base+'/api/storage',{method:'POST',headers:{cookie,Origin:'https://other.example','Content-Type':'application/json'},body:'{}'})).status,403);
+assert.equal((await fetch(base+'/api/storage',{method:'POST',headers:{cookie,Origin:base,'Content-Type':'application/json'},body:'{"op":"unknown","payload":{}}'})).status,400);
+}finally{child.kill()}
+});
