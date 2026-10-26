@@ -99,3 +99,29 @@ test('Supplier rendering retains master array order and Admin uses valid delegat
  const a=makeApp();assert.equal(vm.runInContext("(()=>{selectedSupplier='Pier 7';const html=renderSuppliers();const ps=MASTER.suppliers['Pier 7'];return ps.every((p,i)=>i===0||html.indexOf(esc(ps[i-1].name))<html.indexOf(esc(p.name)))})()",a),true);
  assert.equal(vm.runInContext("adminProducts().includes('onclick=\"toggleExclude(')",a),false);
 });
+
+test('Header has two main sections and Gastro-only business navigation',()=>{
+ const a=makeApp();a.renderInventory=()=>'';a.bindInventory=()=>{};
+ vm.runInContext('render()',a);
+ assert.equal(vm.runInContext("(document.getElementById('sectionNav').innerHTML.match(/data-section=/g)||[]).length",a),2);
+ assert.match(vm.runInContext("document.getElementById('sectionNav').innerHTML",a),/>Gastro</);
+ assert.equal(vm.runInContext("(document.getElementById('businessNav').innerHTML.match(/data-business=/g)||[]).length",a),3);
+ vm.runInContext("setSection('storage')",a);
+ assert.equal(vm.runInContext('business',a),'Lager');
+ assert.equal(vm.runInContext('page',a),'storage');
+ assert.equal(vm.runInContext("document.getElementById('businessNav').hidden",a),true);
+ assert.equal(vm.runInContext("document.getElementById('businessNav').innerHTML",a),'');
+ assert.doesNotMatch(html,/workflowLager|workflowSuppliers|class="workflowNav"/);
+});
+
+test('Switching Gastro and Lager restores the last Gastro business and page',()=>{
+ const a=makeApp('staff');a.renderInventory=()=>'';a.bindInventory=()=>{};
+ vm.runInContext("setBusiness('Foodshop');go('suppliers');selectedSupplier='Troiber';setSection('storage');setSection('gastro')",a);
+ assert.equal(vm.runInContext('business',a),'Foodshop');
+ assert.equal(vm.runInContext('page',a),'suppliers');
+ assert.equal(vm.runInContext('selectedSupplier',a),'Troiber');
+ vm.runInContext("setSection('gastro')",a);
+ assert.equal(vm.runInContext('page',a),'suppliers');
+ vm.runInContext("setBusiness('invalid')",a);
+ assert.equal(vm.runInContext('business',a),'Foodshop');
+});
